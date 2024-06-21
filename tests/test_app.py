@@ -15,7 +15,7 @@ def teste_read_root_deve_retornar_ok_e_ola_mundo():
 
     Raises:
         AssertionError: Se o status da resposta não for 200 OK ou
-        se a mensagem retornada não for 'Olá Mundo!'.
+        se a mensagem retornada não conter 'Olá Mundo!'.
     """
 
     client = TestClient(app)  # Fase 1: Arrange (Organização do Teste)
