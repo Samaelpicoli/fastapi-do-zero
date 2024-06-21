@@ -2,10 +2,12 @@ from http import HTTPStatus
 
 from fastapi import FastAPI
 
+from .schemas import Message
+
 app = FastAPI()
 
 
-@app.get('/', status_code=HTTPStatus.OK)
+@app.get('/', status_code=HTTPStatus.OK, response_model=Message)
 def read_root():
     """
     Endpoint raiz que retorna uma mensagem de Olá Mundo.
@@ -16,12 +18,4 @@ def read_root():
     Returns:
         dict: Uma mensagem de Olá Mundo irá aparecer no browser.
     """
-    return """
-    <html>
-      <head>
-        <title> Nosso olá mundo!</title>
-      </head>
-      <body>
-        <h1> Olá Mundo </h1>
-      </body>
-    </html>"""
+    return {'message': 'Olá Mundo!'}
