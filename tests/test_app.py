@@ -67,6 +67,49 @@ def test_create_user(client):
     }
 
 
+# Exercicío Aula 3 - Criar um endpoint de GET para pegar um único
+# recurso como users/{id} e fazer seus testes.
+def test_read_user(client):
+    """
+    Testa o endpoint de leitura de um usuário específico para
+    verificar se retorna
+    o status HTTP 200 (OK) e as informações públicas do usuário.
+
+    Args:
+        client (TestClient): O cliente de teste FastAPI.
+
+    Asserts:
+        Verifica se o status code da resposta é 200 (OK).
+        Verifica se o JSON da resposta contém as informações
+        públicas do usuário.
+    """
+    response = client.get('/users/1')
+
+    assert response.status_code == HTTPStatus.OK
+
+    assert response.json() == {
+        'username': 'Samael',
+        'email': 'sama@gmail.com',
+        'id': 1,
+    }
+
+
+def test_read_user_not_found(client):
+    """
+    Testa o endpoint de leitura de um usuário específico para
+    verificar se retorna
+    o status HTTP 404 (Not Found) quando o usuário não é encontrado.
+
+    Args:
+        client (TestClient): O cliente de teste FastAPI.
+
+    Asserts:
+        Verifica se o status code da resposta é 404 (Not Found).
+    """
+    response = client.get('/users/3')
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
 def test_read_users(client):
     """
     Teste para o endpoint de leitura de usuários, que deve retornar
@@ -137,6 +180,33 @@ def test_update_user(client):
     }
 
 
+# Exercício Aula 3 - Escrever um teste para o erro de 404
+# (NOT FOUND) para o endpoint de PUT;
+def test_update_user_not_found(client):
+    """
+    Testa o endpoint de alteração de um usuário específico para
+    verificar se retorna
+    o status HTTP 404 (Not Found) quando o usuário não é encontrado.
+
+    Args:
+        client (TestClient): O cliente de teste FastAPI.
+
+    Asserts:
+        Verifica se o status code da resposta é 404 (Not Found).
+    """
+    response = client.put(
+        '/users/2',
+        json={
+            'username': 'Samael',
+            'email': 'samael@gmail.com',
+            'id': 1,
+            'password': '1234',
+        },
+    )
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
 def test_delete_user(client):
     """
     Teste para o endpoint de deleção de usuário, que deve retornar
@@ -159,3 +229,21 @@ def test_delete_user(client):
     """
     response = client.delete('/users/1')
     assert response.json() == {'message': 'User deleted'}
+
+
+# Exercício Aula 3 - Escrever um teste para o erro de 404
+# (NOT FOUND) para o endpoint de DELETE;
+def test_delete_user_not_found(client):
+    """
+    Testa o endpoint de exclusão de um usuário específico para
+    verificar se retorna
+    o status HTTP 404 (Not Found) quando o usuário não é encontrado.
+
+    Args:
+        client (TestClient): O cliente de teste FastAPI.
+
+    Asserts:
+        Verifica se o status code da resposta é 404 (Not Found).
+    """
+    response = client.delete('/users/3')
+    assert response.status_code == HTTPStatus.NOT_FOUND

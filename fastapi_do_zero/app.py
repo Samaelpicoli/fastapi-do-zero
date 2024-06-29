@@ -125,3 +125,33 @@ def delete_user(user_id: int):
     del database[user_id - 1]
 
     return {'message': 'User deleted'}
+
+
+# Exercicío Aula 3 - Criar um endpoint de GET para pegar um único
+# recurso como users/{id} e fazer seus testes.
+@app.get('/users/{user_id}', response_model=UserPublic)
+def read_user(user_id: int):
+    """
+    Endpoint para obter informações de um usuário específico.
+
+    Este endpoint retorna as informações públicas de um usuário
+    com base no ID fornecido. O código de status HTTP retornado
+    é 200 (OK).
+
+    Args:
+        user_id (int): O ID do usuário a ser recuperado.
+
+    Raises:
+        HTTPException: Se o usuário com o ID fornecido não for
+        encontrado.
+
+    Returns:
+        UserPublic: Um objeto contendo as informações públicas
+        do usuário. De acordo com o esquema definido em UserPublic.
+    """
+    if user_id < 1 or user_id > len(database):
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail='User not found'
+        )
+    user_with_id = database[user_id - 1]
+    return user_with_id
