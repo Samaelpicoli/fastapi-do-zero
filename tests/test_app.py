@@ -203,7 +203,6 @@ def test_update_user_not_found(client):
             'password': '1234',
         },
     )
-
     assert response.status_code == HTTPStatus.NOT_FOUND
 
 
