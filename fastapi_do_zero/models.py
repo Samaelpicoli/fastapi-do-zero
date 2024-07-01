@@ -3,10 +3,9 @@ from datetime import datetime
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column, registry
 
-
-# Cria uma instância do registry que é utilizada para mapear 
-# classes de modelo para tabelas no banco de dados. O registry 
-# gerencia o mapeamento ORM entre as classes Python e as 
+# Cria uma instância do registry que é utilizada para mapear
+# classes de modelo para tabelas no banco de dados. O registry
+# gerencia o mapeamento ORM entre as classes Python e as
 # tabelas do banco de dados.
 table_registry = registry()
 
@@ -17,8 +16,8 @@ class User:
     Modelo de dados para a tabela de usuários.
 
     Esta classe define a estrutura da tabela 'users' no banco de dados,
-    utilizando SQLAlchemy para mapeamento objeto-relacional (ORM). 
-    Cada instância desta classe representa um registro na tabela 
+    utilizando SQLAlchemy para mapeamento objeto-relacional (ORM).
+    Cada instância desta classe representa um registro na tabela
     'users'.
 
     Attributes:
@@ -26,9 +25,10 @@ class User:
         username (str): Nome de usuário, deve ser único.
         password (str): Senha do usuário.
         email (str): Endereço de email do usuário, deve ser único.
-        created_at (datetime): Timestamp da criação do registro, 
+        created_at (datetime): Timestamp da criação do registro,
         definido automaticamente pelo servidor.
     """
+
     __tablename__ = 'users'
 
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
@@ -37,4 +37,7 @@ class User:
     email: Mapped[str] = mapped_column(unique=True)
     created_at: Mapped[datetime] = mapped_column(
         init=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        init=False, server_default=func.now(), onupdate=func.now()
     )

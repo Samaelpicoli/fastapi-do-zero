@@ -25,7 +25,7 @@ def client():
 @pytest.fixture()
 def session():
     """
-    Fixture para configurar uma sessão de banco de dados em 
+    Fixture para configurar uma sessão de banco de dados em
     memória para testes.
 
     Esta fixture cria um banco de dados SQLite em memória, configura
@@ -33,7 +33,7 @@ def session():
     para os testes. Após os testes, as tabelas são removidas.
 
     Yields:
-        Session: Uma sessão de banco de dados configurada 
+        Session: Uma sessão de banco de dados configurada
         para uso nos testes.
     """
     engine = create_engine('sqlite:///:memory:')
@@ -42,5 +42,5 @@ def session():
     # Inicia uma sessão de banco de dados
     with Session(engine) as session:
         yield session  # Fornece a sessão para os testes
-        
+
     table_registry.metadata.drop_all(engine)
