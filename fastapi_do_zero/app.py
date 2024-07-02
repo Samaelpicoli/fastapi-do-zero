@@ -172,24 +172,34 @@ def delete_user(user_id: int, session: Session = Depends(get_session)):
 
 # Exercicío Aula 3 - Criar um endpoint de GET para pegar um único
 # recurso como users/{id} e fazer seus testes.
+# Exercício aula 5 - Implementar o banco de dados para o endpoint
+# de listagem por id, criado no exercício 3 da aula 03.
 @app.get('/users/{user_id}', response_model=UserPublic)
-def read_user(user_id: int):
+def read_user(user_id: int, session: Session = Depends(get_session)):
     """
-    Endpoint para obter informações de um usuário específico.
+    Endpoint para ler os dados de um usuário específico.
 
     Este endpoint retorna as informações públicas de um usuário
-    com base no ID fornecido. O código de status HTTP retornado
-    é 200 (OK).
+    com base no ID fornecido. Se o usuário não for encontrado, é
+    retornado um erro 404 (Not Found).
 
     Args:
-        user_id (int): O ID do usuário a ser recuperado.
+        user_id (int): O identificador do usuário.
+        session (Session): A sessão do banco de dados.
+
+    Returns:
+        UserPublic: Um objeto contendo as informações públicas do
+        usuário.
 
     Raises:
         HTTPException: Se o usuário com o ID fornecido não for
-        encontrado.
-
-    Returns:
-        UserPublic: Um objeto contendo as informações públicas
-        do usuário. De acordo com o esquema definido em UserPublic.
+        encontrado, uma exceção HTTP 404 é levantada com a mensagem
+        "Usuário não existe".
     """
-    ...
+    db_user = session.scalar(select(User).where(User.id == user_id))
+    if not db_user:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail='Usuário não existe'
+        )
+
+    return db_user
