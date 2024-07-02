@@ -363,3 +363,5 @@ def test_delete_user_not_found(client):
     """
     response = client.delete('/users/1')
     assert response.status_code == HTTPStatus.NOT_FOUND
+
+
