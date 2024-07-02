@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class Message(BaseModel):
@@ -33,21 +33,6 @@ class UserSchema(BaseModel):
     password: str
 
 
-class UserDB(UserSchema):
-    """
-    Schema para os dados do usuário no banco de dados.
-
-    Este modelo herda de UserSchema e adiciona o atributo id,
-    representando a estrutura completa de um usuário armazenado
-    no banco de dados.
-
-    Attributes:
-        id (int): Identificador único do usuário.
-    """
-
-    id: int
-
-
 class UserPublic(BaseModel):
     """
     Schema para os dados públicos do usuário.
@@ -61,11 +46,16 @@ class UserPublic(BaseModel):
         username (str): O nome de usuário.
         email (EmailStr): O endereço de email do usuário.
         Deve ser um email válido.
+        model_config (ConfigDict): Configuração adicional para o
+        modelo Pydantic. Utiliza 'from_attributes=True' para permitir
+        a criação do modelo a partir de instâncias de classes que
+        possuam atributos correspondentes.
     """
 
     id: int
     username: str
     email: EmailStr
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserList(BaseModel):

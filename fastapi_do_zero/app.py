@@ -1,13 +1,14 @@
 from http import HTTPStatus
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from .schemas import Message, UserDB, UserList, UserPublic, UserSchema
+from .database import get_session
+from .models import User
+from .schemas import Message, UserList, UserPublic, UserSchema
 
 app = FastAPI()
-
-
-database = []  # banco falso e provisório para estudo (é uma lista)
 
 
 @app.get('/', status_code=HTTPStatus.OK, response_model=Message)
@@ -24,7 +25,7 @@ def read_root():
 
 
 @app.post('/users/', status_code=HTTPStatus.CREATED, response_model=UserPublic)
-def create_user(user: UserSchema):
+def create_user(user: UserSchema, session: Session = Depends(get_session)):
     """
     Endpoint para criar um novo usuário.
 
@@ -35,96 +36,138 @@ def create_user(user: UserSchema):
 
     Args:
         user (UserSchema): Um objeto contendo os dados do usuário.
+        session (Session): A sessão de banco de dados a ser utilizada.
+
+    Raises:
+        HTTPException: Se o usuário ou e-mail já existirem.
 
     Returns:
         UserPublic: Um objeto contendo as informações públicas do
         usuário. De acordo com o esquema definido em UserPublic.
     """
-    user_with_id = UserDB(id=len(database) + 1, **user.model_dump())
+    db_user = session.scalar(
+        select(User).where(
+            (User.username == user.username) | (User.email == user.email)
+        )
+    )
 
-    database.append(user_with_id)
+    if db_user:
+        if db_user.username == user.username:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail='Usuário já existente',
+            )
+        elif db_user.email == user.email:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail='E-mail já existente',
+            )
 
-    return user_with_id
+    db_user = User(
+        username=user.username, email=user.email, password=user.password
+    )
+
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+
+    return db_user
 
 
 @app.get('/users/', response_model=UserList)
-def read_users():
+def read_users(
+    session: Session = Depends(get_session), limit: int = 10, skip: int = 0
+):
     """
     Endpoint para listar todos os usuários.
 
     Este endpoint retorna uma lista de todos os usuários cadastrados.
     O código de status HTTP retornado é 200 (OK).
 
+    Args:
+        session (Session): A sessão de banco de dados a ser utilizada.
+        limit (int): Número máximo de usuários a serem retornados.
+        skip (int): Número de usuários a serem ignorados.
+
     Returns:
         UserList: Um objeto contendo uma lista de usuários.
         De acordo com o esquema definido em UserList.
     """
-    return {'users': database}
+    user = session.scalars(select(User).limit(limit).offset(skip))
+    return {'users': user}
 
 
 @app.put('/users/{user_id}', response_model=UserPublic)
-def update_user(user_id: int, user: UserSchema):
+def update_user(
+    user_id: int, user: UserSchema, session: Session = Depends(get_session)
+):
     """
     Endpoint para atualizar um usuário existente.
 
-    Este endpoint recebe os novos dados de um usuário e atualiza
-    as informações do usuário correspondente ao ID fornecido. Os
-    dados do usuário são validados de acordo com o esquema definido
-    em UserSchema.
+    Este endpoint recebe os dados atualizados de um usuário e retorna
+    as informações públicas do usuário atualizado. Os dados do usuário
+    são validados de acordo com o esquema definido em UserSchema.
     O código de status HTTP retornado é 200 (OK).
 
     Args:
         user_id (int): O ID do usuário a ser atualizado.
-        user (UserSchema): Um objeto contendo os novos dados
+        user (UserSchema): Um objeto contendo os dados atualizados
         do usuário.
+        session (Session): A sessão de banco de dados a ser utilizada.
 
     Raises:
-        HTTPException: Se o usuário com o ID fornecido não
-        for encontrado.
+        HTTPException: Se o usuário não existir.
 
     Returns:
-        UserPublic: Um objeto contendo as informações públicas
-        do usuário atualizado.
-        De acordo com o esquema definido em UserPublic.
-
+        UserPublic: Um objeto contendo as informações públicas do
+        usuário.De acordo com o esquema definido em UserPublic.
     """
-    if user_id < 1 or user_id > len(database):
+    db_user = session.scalar(select(User).where(User.id == user_id))
+
+    if not db_user:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='User not found'
+            status_code=HTTPStatus.NOT_FOUND, detail='Usuário não existe'
         )
 
-    user_with_id = UserDB(id=user_id, **user.model_dump())
-    database[user_id - 1] = user_with_id
-    return user_with_id
+    db_user.username = user.username
+    db_user.email = user.email
+    db_user.password = user.password
+
+    session.commit()
+    session.refresh(db_user)
+
+    return db_user
 
 
 @app.delete('/users/{user_id}', response_model=Message)
-def delete_user(user_id: int):
+def delete_user(user_id: int, session: Session = Depends(get_session)):
     """
     Endpoint para deletar um usuário.
 
-    Este endpoint deleta o usuário correspondente ao ID fornecido.
-    O código de status HTTP retornado é 200 (OK).
+    Este endpoint deleta um usuário existente e retorna uma mensagem
+    de confirmação. O código de status HTTP retornado é 200 (OK).
 
     Args:
         user_id (int): O ID do usuário a ser deletado.
+        session (Session): A sessão de banco de dados a ser utilizada.
 
     Raises:
-        HTTPException: Se o usuário com o ID fornecido não
-        for encontrado.
+        HTTPException: Se o usuário não existir.
 
     Returns:
-        Message: Uma mensagem confirmando a deleção do usuário.
-        De acordo com o esquema definido em Message.
+        Message: Uma mensagem de confirmação da exclusão.
     """
-    if user_id < 1 or user_id > len(database):
+    db_user = session.scalar(select(User).where(User.id == user_id))
+
+    if not db_user:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='User not found'
+            status_code=HTTPStatus.NOT_FOUND, detail='Usuário não existe'
         )
 
-    del database[user_id - 1]
+    session.delete(db_user)
+    session.commit()
 
-    return {'message': 'User deleted'}
+    return {'message': 'Usuário deletado'}
 
 
 # Exercicío Aula 3 - Criar um endpoint de GET para pegar um único
@@ -149,9 +192,4 @@ def read_user(user_id: int):
         UserPublic: Um objeto contendo as informações públicas
         do usuário. De acordo com o esquema definido em UserPublic.
     """
-    if user_id < 1 or user_id > len(database):
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='User not found'
-        )
-    user_with_id = database[user_id - 1]
-    return user_with_id
+    ...

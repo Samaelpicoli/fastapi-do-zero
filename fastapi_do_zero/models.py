@@ -38,7 +38,9 @@ class User:
     created_at: Mapped[datetime] = mapped_column(
         init=False, server_default=func.now()
     )
-    # Exercício aula 4
+
+    # Exercício aula 4 - Fazer uma alteração no modelo (tabela User)
+    # e adicionar um campo chamado updated_at
     updated_at: Mapped[datetime] = mapped_column(
         init=False, server_default=func.now(), onupdate=func.now()
     )
