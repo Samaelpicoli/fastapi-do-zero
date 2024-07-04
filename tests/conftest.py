@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 from fastapi_do_zero.app import app
 from fastapi_do_zero.database import get_session
 from fastapi_do_zero.models import User, table_registry
+from fastapi_do_zero.security import get_password_hash
 
 
 @pytest.fixture()
@@ -84,9 +85,40 @@ def user(session):
     Returns:
         User: Um objeto User representando o usuário de teste.
     """
-    user = User(username='Teste', email='teste@teste.com', password='teste')
+    pwd = 'teste'
+    user = User(
+        username='Teste',
+        email='teste@teste.com',
+        password=get_password_hash(pwd),
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
 
+    user.clean_password = pwd  # Monkey Patch para guardar a senha og
+
     return user
+
+
+@pytest.fixture()
+def token(client, user):
+    """
+    Fixture para obter um token de autenticação.
+
+    Esta fixture faz uma requisição para obter um token de
+    autenticação usando o usuário de teste criado. O token é
+    retornado para uso nos testes.
+
+    Args:
+        client (TestClient): O cliente de teste para fazer a
+        requisição.
+        user (User): O usuário de teste criado.
+
+    Returns:
+        str: O token de acesso obtido.
+    """
+    response = client.post(
+        '/token',
+        data={'username': user.username, 'password': user.clean_password},
+    )
+    return response.json()['access_token']

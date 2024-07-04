@@ -1,12 +1,19 @@
 from http import HTTPStatus
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .database import get_session
 from .models import User
 from .schemas import Message, UserList, UserPublic, UserSchema
+from .security import (
+    create_access_token,
+    get_current_user,
+    get_password_hash,
+    verify_password,
+)
 
 app = FastAPI()
 
@@ -64,7 +71,9 @@ def create_user(user: UserSchema, session: Session = Depends(get_session)):
             )
 
     db_user = User(
-        username=user.username, email=user.email, password=user.password
+        username=user.username,
+        email=user.email,
+        password=get_password_hash(user.password),
     )
 
     session.add(db_user)
@@ -99,7 +108,10 @@ def read_users(
 
 @app.put('/users/{user_id}', response_model=UserPublic)
 def update_user(
-    user_id: int, user: UserSchema, session: Session = Depends(get_session)
+    user_id: int,
+    user: UserSchema,
+    session: Session = Depends(get_session),
+    current_user=Depends(get_current_user),
 ):
     """
     Endpoint para atualizar um usuário existente.
@@ -114,33 +126,37 @@ def update_user(
         user (UserSchema): Um objeto contendo os dados atualizados
         do usuário.
         session (Session): A sessão de banco de dados a ser utilizada.
+        current_user (User): O usuário atualmente autenticado, obtido
+        a partir do token de autenticação.
 
     Raises:
-        HTTPException: Se o usuário não existir.
+        HTTPException: Se o usuário não existir ou se o usuário
+        autenticado não tiver permissão.
 
     Returns:
         UserPublic: Um objeto contendo as informações públicas do
         usuário.De acordo com o esquema definido em UserPublic.
     """
-    db_user = session.scalar(select(User).where(User.id == user_id))
+    # Verifica se o usuário autenticado tem permissão para atualizar o usuário
+    if current_user.id != user_id:
+        raise HTTPException(status_code=400, detail='Not enough permission')
 
-    if not db_user:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='Usuário não existe'
-        )
-
-    db_user.username = user.username
-    db_user.email = user.email
-    db_user.password = user.password
+    current_user.username = user.username
+    current_user.email = user.email
+    current_user.password = get_password_hash(user.password)
 
     session.commit()
-    session.refresh(db_user)
+    session.refresh(current_user)
 
-    return db_user
+    return current_user
 
 
 @app.delete('/users/{user_id}', response_model=Message)
-def delete_user(user_id: int, session: Session = Depends(get_session)):
+def delete_user(
+    user_id: int,
+    session: Session = Depends(get_session),
+    current_user=Depends(get_current_user),
+):
     """
     Endpoint para deletar um usuário.
 
@@ -150,21 +166,23 @@ def delete_user(user_id: int, session: Session = Depends(get_session)):
     Args:
         user_id (int): O ID do usuário a ser deletado.
         session (Session): A sessão de banco de dados a ser utilizada.
+        current_user (User): O usuário atualmente autenticado, obtido
+        a partir do token de autenticação.
 
     Raises:
-        HTTPException: Se o usuário não existir.
+        HTTPException: Se o usuário não existir ou se o usuário
+        autenticado não tiver permissão.
 
     Returns:
         Message: Uma mensagem de confirmação da exclusão.
     """
-    db_user = session.scalar(select(User).where(User.id == user_id))
-
-    if not db_user:
+    # Verifica se o usuário autenticado tem permissão para deletar o usuário
+    if current_user.id != user_id:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='Usuário não existe'
+            status_code=HTTPStatus.BAD_REQUEST, detail='Not enough permission'
         )
 
-    session.delete(db_user)
+    session.delete(current_user)
     session.commit()
 
     return {'message': 'Usuário deletado'}
@@ -203,3 +221,42 @@ def read_user(user_id: int, session: Session = Depends(get_session)):
         )
 
     return db_user
+
+
+@app.post('/token')
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    session: Session = Depends(get_session),
+):
+    """
+    Endpoint para login e obtenção de token de acesso.
+
+    Este endpoint verifica as credenciais do usuário e, se forem
+    válidas, retorna um token de acesso. O código de status HTTP
+    retornado é 200 (OK) ou 400 (Bad Request) em caso de falha.
+
+    Args:
+        form_data (OAuth2PasswordRequestForm): Os dados do formulário
+        de login, contendo o nome de usuário e a senha.
+        session (Session): A sessão de banco de dados a ser utilizada.
+
+    Raises:
+        HTTPException: Se o nome de usuário ou a senha estiverem
+        incorretos.
+
+    Returns:
+        dict: Um dicionário contendo o token de acesso e o tipo de
+        token.
+    """
+    # Busca o usuário no banco de dados pelo nome de usuário
+    user = session.scalar(
+        select(User).where(User.username == form_data.username)
+    )
+    # Verifica se o usuário existe e se a senha está correta
+    if not user or not verify_password(form_data.password, user.password):
+        raise HTTPException(
+            status_code=400, detail='Incorrect username or password'
+        )
+    # Cria o token de acesso para o usuário autenticado
+    access_token = create_access_token(data={'sub': user.username})
+    return {'access_token': access_token, 'token_type': 'Bearer'}

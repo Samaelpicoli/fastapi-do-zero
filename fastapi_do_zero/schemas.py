@@ -71,3 +71,19 @@ class UserList(BaseModel):
     """
 
     users: list[UserPublic]
+
+
+class Token(BaseModel):
+    """
+    Schema para o token de acesso.
+
+    Este modelo define a estrutura dos dados do token de acesso
+    retornado após a autenticação do usuário.
+
+    Attributes:
+        access_token (str): O token de acesso JWT.
+        token_type (str): O tipo do token, geralmente 'bearer'.
+    """
+
+    access_token: str
+    token_type: str
