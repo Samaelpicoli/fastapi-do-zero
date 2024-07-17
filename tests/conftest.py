@@ -118,7 +118,7 @@ def token(client, user):
         str: O token de acesso obtido.
     """
     response = client.post(
-        '/token',
+        'auth/token',
         data={'username': user.username, 'password': user.clean_password},
     )
     return response.json()['access_token']

@@ -2,7 +2,7 @@ from http import HTTPStatus
 
 from jwt import decode
 
-from fastapi_do_zero.security import ALGORITHM, SECRET_KEY, create_access_token
+from fastapi_do_zero.security import create_access_token, settings
 
 
 def test_jwt():
@@ -21,7 +21,9 @@ def test_jwt():
     # Cria o token JWT
     token = create_access_token(data)
     # Decodifica o token JWT
-    decoded = decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    decoded = decode(
+        token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+    )
 
     # Verifica se o campo 'sub' no token decodificado é igual
     # ao original
