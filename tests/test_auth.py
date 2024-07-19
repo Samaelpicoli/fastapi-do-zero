@@ -1,5 +1,7 @@
 from http import HTTPStatus
 
+from freezegun import freeze_time
+
 
 def test_get_token(client, user):
     """
@@ -75,3 +77,165 @@ def test_update_user_not_found_token(client, user, token):
     )
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {'detail': 'Could not validate credentials'}
+
+
+def test_token_expired_after_time(client, user):
+    """
+    Testa a expiração do token após um determinado período de tempo.
+
+    Este teste verifica se o token de acesso expira corretamente
+    após 30 minutos. Primeiro, gera um token às 12:00 e depois
+    tenta usá-lo às 12:31, esperando que o token seja considerado
+    inválido.
+
+    Args:
+        client (TestClient): O cliente de teste para fazer a requisição.
+        user (User): Um usuário já existente no banco de dados.
+
+    Raises:
+        AssertionError: Se o token não expirar corretamente.
+    """
+    with freeze_time('2023-07-14 12:00:00'):
+        # Gerar o token as 12h
+        response = client.post(
+            '/auth/token',
+            data={'username': user.username, 'password': user.clean_password},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        token = response.json()['access_token']
+
+    with freeze_time('2023-07-14 12:31:00'):
+        # Usar o token simulando a passagem dos 30 minutos
+        response = client.put(
+            f'/users/{user.id}',
+            headers={'Authorization': f'Bearer {token}'},
+            json={
+                'username': 'wrong',
+                'email': 'wrong@wrong.com',
+                'password': 'wrong',
+            },
+        )
+
+        assert response.status_code == HTTPStatus.UNAUTHORIZED
+        assert response.json() == {'detail': 'Could not validate credentials'}
+
+
+def test_token_wrong_password(client, user):
+    """
+    Testa o login com senha incorreta.
+
+    Este teste verifica se o sistema retorna o código de status
+    correto e a mensagem apropriada ao tentar fazer login com uma
+    senha incorreta.
+
+    Args:
+        client (TestClient): O cliente de teste para fazer a requisição.
+        user (User): Um usuário já existente no banco de dados.
+
+    Raises:
+        AssertionError: Se o sistema não retornar o código de status
+        e a mensagem esperados.
+    """
+    response = client.post(
+        '/auth/token', data={'username': user.username, 'password': '1234'}
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {'detail': 'Incorrect username or password'}
+
+
+def test_token_wrong_username(client, user):
+    """
+    Testa o login com nome de usuário incorreto.
+
+    Este teste verifica se o sistema retorna o código de status
+    correto e a mensagem apropriada ao tentar fazer login com um
+    nome de usuário incorreto.
+
+    Args:
+        client (TestClient): O cliente de teste para fazer a requisição.
+        user (User): Um usuário já existente no banco de dados.
+
+    Raises:
+        AssertionError: Se o sistema não retornar o código de status
+        e a mensagem esperados.
+    """
+    response = client.post(
+        '/auth/token',
+        data={'username': 'blah', 'password': user.clean_password},
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {'detail': 'Incorrect username or password'}
+
+
+def test_refresh_token(client, token):
+    """
+    Testa o endpoint de atualização do token.
+
+    Este teste verifica se o endpoint de atualização do token retorna
+    um novo token de acesso e o tipo de token correto.
+
+    Args:
+        client (TestClient): O cliente de teste para fazer a requisição.
+        token (str): Um token de acesso válido.
+
+    Raises:
+        AssertionError: Se o sistema não retornar o código de status
+        e os dados esperados.
+    """
+    response = client.post(
+        '/auth/refresh_token',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    data = response.json()
+
+    assert response.status_code == HTTPStatus.OK
+    assert 'access_token' in data
+    assert 'token_type' in data
+    assert data['token_type'] == 'bearer'
+
+
+def test_token_expired_dont_refresh(client, user):
+    """
+    Testa a não atualização de um token expirado.
+
+    Este teste verifica se o sistema não permite a atualização de
+    um token de acesso expirado. Primeiro, gera um token às 12:00 e
+    depois tenta atualizá-lo às 12:31, esperando que a atualização
+    falhe.
+
+    Args:
+        client (TestClient): O cliente de teste para fazer a requisição.
+        user (User): Um usuário já existente no banco de dados.
+
+    Raises:
+        AssertionError: Se o sistema permitir a atualização do token
+        expirado.
+    """
+    with freeze_time('2023-07-14 12:00:00'):
+        # Gerar o token as 12h
+        response = client.post(
+            '/auth/token',
+            data={'username': user.username, 'password': user.clean_password},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        token = response.json()['access_token']
+
+    with freeze_time('2023-07-14 12:31:00'):
+        # Usar o token simulando a passagem dos 30 minutos
+        response = client.post(
+            '/auth/refresh_token',
+            headers={'Authorization': f'Bearer {token}'},
+            json={
+                'username': 'wrong',
+                'email': 'wrong@wrong.com',
+                'password': 'wrong',
+            },
+        )
+
+        assert response.status_code == HTTPStatus.UNAUTHORIZED
+        assert response.json() == {'detail': 'Could not validate credentials'}

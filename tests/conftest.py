@@ -1,3 +1,4 @@
+import factory
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -8,6 +9,35 @@ from fastapi_do_zero.app import app
 from fastapi_do_zero.database import get_session
 from fastapi_do_zero.models import User, table_registry
 from fastapi_do_zero.security import get_password_hash
+
+
+class UserFactory(factory.Factory):
+    """
+    Fábrica para criar instâncias do modelo User para testes.
+
+    A classe UserFactory utiliza a biblioteca factory_boy para gerar
+    dados fictícios consistentes e previsíveis para os testes. Os
+    atributos username, email e password são gerados automaticamente
+    usando as funções de factory_boy.
+
+    Attributes:
+        Meta (class): Classe interna que define qual modelo a fábrica
+        irá construir.
+        username (str): Nome de usuário gerado sequencialmente.
+        email (str): Email gerado a partir do username.
+        password (str): Senha gerada a partir do username.
+    """
+
+    class Meta:
+        """
+        Define quem a classe irá construir utilizando o parâmetro model.
+        """
+
+        model = User
+
+    username = factory.sequence(lambda n: f'test{n}')
+    email = factory.LazyAttribute(lambda obj: f'{obj.username}@test.com')
+    password = factory.LazyAttribute(lambda obj: f'{obj.username}+senha')
 
 
 @pytest.fixture()
@@ -86,16 +116,42 @@ def user(session):
         User: Um objeto User representando o usuário de teste.
     """
     pwd = 'teste'
-    user = User(
-        username='Teste',
-        email='teste@teste.com',
+    user = UserFactory(
         password=get_password_hash(pwd),
     )
     session.add(user)
     session.commit()
     session.refresh(user)
 
-    user.clean_password = pwd  # Monkey Patch para guardar a senha og
+    user.clean_password = 'teste'  # Monkey Patch para guardar a senha og
+
+    return user
+
+
+@pytest.fixture()
+def other_user(session):
+    """
+    Fixture para criar um segundo usuário de teste no banco de dados.
+
+    Esta fixture adiciona um segundo usuário de teste ao banco de dados
+    antes de cada teste que o utilizar. O usuário é criado utilizando
+    a UserFactory, adicionado à sessão do banco de dados, confirmado e
+    refrescado para garantir que esteja disponível para os testes.
+
+    Args:
+        session (Session): Sessão de banco de dados configurada
+        para testes.
+
+    Returns:
+        User: Um objeto User representando o segundo usuário de teste.
+    """
+    # Cria um usuário utilizando a UserFactory
+    user = UserFactory()
+
+    # Adiciona o usuário à sessão do banco de dados
+    session.add(user)
+    session.commit()
+    session.refresh(user)
 
     return user
 

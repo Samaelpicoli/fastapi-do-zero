@@ -7,7 +7,12 @@ from sqlalchemy.orm import Session
 
 from fastapi_do_zero.database import get_session
 from fastapi_do_zero.models import User
-from fastapi_do_zero.security import create_access_token, verify_password
+from fastapi_do_zero.schemas import Token
+from fastapi_do_zero.security import (
+    create_access_token,
+    get_current_user,
+    verify_password,
+)
 
 router = APIRouter(prefix='/auth', tags=['auth'])
 
@@ -49,3 +54,28 @@ def login_for_access_token(session: T_Session, form_data: T_OAuth2Form):
     # Cria o token de acesso para o usuário autenticado
     access_token = create_access_token(data={'sub': user.username})
     return {'access_token': access_token, 'token_type': 'Bearer'}
+
+
+@router.post('/refresh_token', response_model=Token)
+def refresh_access_token(user: User = Depends(get_current_user)):
+    """
+    Endpoint para atualizar o token de acesso.
+
+    Este endpoint gera um novo token de acesso para o usuário
+    autenticado usando o token de acesso anterior. O novo token é
+    retornado no formato WT. O código de status HTTP retornado
+    é 200 (OK).
+
+    Args:
+        user (User): O usuário autenticado, obtido a partir do
+        token de acesso atual.
+
+    Returns:
+        dict: Um dicionário contendo o novo token de acesso e
+        o tipo de token.
+
+    Raises:
+        HTTPException: Se as credenciais não puderem ser validadas.
+    """
+    new_access_token = create_access_token(data={'sub': user.username})
+    return {'access_token': new_access_token, 'token_type': 'bearer'}

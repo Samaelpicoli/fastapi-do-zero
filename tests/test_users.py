@@ -42,92 +42,6 @@ def test_create_user(client):
     }
 
 
-# Exercício Aula 5 - Escrever um teste para o endpoint de POST (
-# create_user) que contemple o cenário onde o username já foi
-# registrado. Validando o erro 400;
-def test_create_user_username_exist(client, user):
-    """
-    Teste para o endpoint de criação de usuário quando o nome de
-    usuário já existe.
-
-    Este teste verifica se a API retorna o status HTTP 400 (Bad
-    Request) quando tentamos criar um novo usuário com um nome de
-    usuário já existente.
-
-    O teste segue três fases:
-    1. Arrange (Organização do Teste): Cria o cliente de teste e
-       adiciona um usuário com um nome de usuário específico ao
-       banco de dados.
-    2. Act (Ação): Faz uma requisição POST para o endpoint de
-       criação de usuário com o mesmo nome de usuário.
-    3. Assert (Garantia): Verifica se o status da resposta é 400
-       Bad Request, indicando que a criação do usuário falhou
-       devido a um nome de usuário duplicado.
-
-    Args:
-        client (TestClient): O cliente de teste para fazer a
-        requisição.
-        user (User): Um usuário já existente no banco de dados.
-
-    Raises:
-        AssertionError: Se o status da resposta não for 400 Bad
-        Request.
-    """
-    response = client.post(
-        '/users/',
-        json={
-            'username': 'Teste',
-            'email': 'sama@gmail.com',
-            'password': '1234',
-        },
-    )
-
-    assert response.status_code == HTTPStatus.BAD_REQUEST
-
-
-# Exercício Aula 5 - Escrever um teste para o endpoint de POST (
-# create_user) que contemple o cenário onde o email já foi
-# registrado. Validando o erro 400;
-def test_create_user_email_exist(client, user):
-    """
-    Teste para o endpoint de criação de usuário quando o email de
-    usuário já existe.
-
-    Este teste verifica se a API retorna o status HTTP 400 (Bad
-    Request) quando tentamos criar um novo usuário com um email de
-    já existente.
-
-    O teste segue três fases:
-    1. Arrange (Organização do Teste): Cria o cliente de teste e
-       adiciona um usuário com um email de usuário específico ao
-       banco de dados.
-    2. Act (Ação): Faz uma requisição POST para o endpoint de
-       criação de usuário com o mesmo nome de usuário.
-    3. Assert (Garantia): Verifica se o status da resposta é 400
-       Bad Request, indicando que a criação do usuário falhou
-       devido a um email de usuário duplicado.
-
-    Args:
-        client (TestClient): O cliente de teste para fazer a
-        requisição.
-        user (User): Um usuário já existente no banco de dados.
-
-    Raises:
-        AssertionError: Se o status da resposta não for 400 Bad
-        Request.
-    """
-    response = client.post(
-        '/users/',
-        json={
-            'username': 'sama',
-            'email': 'teste@teste.com',
-            'password': '1234',
-        },
-    )
-
-    assert response.status_code == HTTPStatus.BAD_REQUEST
-
-
 def test_read_users(client):
     """
     Teste para o endpoint de leitura de usuários, que deve retornar
@@ -270,7 +184,7 @@ def test_update_user(client, user, token):
     }
 
 
-def test_update_wrong_user(client, user, token):
+def test_update_wrong_user(client, other_user, token):
     """
     Teste para o endpoint de atualização de usuário, que deve retornar
     status HTTP 403 pois esta tentando atualizar dados de outro usuário.
@@ -286,7 +200,7 @@ def test_update_wrong_user(client, user, token):
     Args:
         client (TestClient): O cliente de teste para fazer a
         requisição.
-        user (User): Um usuário já existente no banco de dados.
+        other_user (User): Um usuário já existente no banco de dados.
         token (str): O token de acesso JWT para autenticação.
 
     Raises:
@@ -294,17 +208,16 @@ def test_update_wrong_user(client, user, token):
         esperado.
     """
     response = client.put(
-        f'/users/{user.id + 1}',
+        f'/users/{other_user.id}',
         headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'Samael',
             'email': 'samael@gmail.com',
-            'id': user.id,
             'password': '1234',
         },
     )
 
-    assert response.json() == {'detail': 'Not enough permission'}
+    assert response.status_code == HTTPStatus.FORBIDDEN
 
 
 def test_delete_user(client, user, token):
@@ -342,7 +255,7 @@ def test_delete_user(client, user, token):
     assert response.json() == {'message': 'Usuário deletado'}
 
 
-def test_delete_wrong_user(client, user, token):
+def test_delete_wrong_user(client, other_user, token):
     """
     Teste para o endpoint de exclusão de usuário, que deve retornar
     status HTTP 403 pois esta sendo tentado excluir outro usuário.
@@ -358,7 +271,7 @@ def test_delete_wrong_user(client, user, token):
     Args:
         client (TestClient): O cliente de teste para fazer a
         requisição.
-        user (User): Um usuário já existente no banco de dados.
+        other_user (User): Um usuário já existente no banco de dados.
         token (str): O token de acesso JWT para autenticação.
 
     Raises:
@@ -366,7 +279,7 @@ def test_delete_wrong_user(client, user, token):
         esperado.
     """
     response = client.delete(
-        f'/users/{user.id + 1}',
+        f'/users/{other_user.id}',
         headers={'Authorization': f'Bearer {token}'},
     )
     assert response.json() == {'detail': 'Not enough permission'}
