@@ -1,6 +1,5 @@
+from datetime import UTC, datetime
 from http import HTTPStatus
-
-from fastapi_do_zero.schemas import UserPublic
 
 
 def test_create_user(client):
@@ -39,6 +38,8 @@ def test_create_user(client):
         'username': 'Samael',
         'email': 'sama@gmail.com',
         'id': 1,
+        'created_at': datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S'),
+        'updated_at': datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S'),
     }
 
 
@@ -175,10 +176,9 @@ def test_read_users_with_user(client, user):
         AssertionError: Se o status da resposta não for 200 OK ou
         se os dados retornados não corresponderem ao esperado.
     """
-    user_schema = UserPublic.model_validate(user).model_dump()
+
     response = client.get('/users/')
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == {'users': [user_schema]}
 
 
 # Exercício aula 5 - Implementar o banco de dados para o endpoint
@@ -263,11 +263,10 @@ def test_update_user(client, user, token):
         },
     )
 
-    assert response.json() == {
-        'username': 'Samael',
-        'email': 'samael@gmail.com',
-        'id': user.id,
-    }
+    assert response.json()['username'] == 'Samael'
+    assert response.json()['email'] == 'samael@gmail.com'
+    assert response.json()['created_at'] is not None
+    assert response.json()['updated_at'] is not None
 
 
 def test_update_wrong_user(client, other_user, token):

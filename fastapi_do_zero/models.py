@@ -1,6 +1,7 @@
 from datetime import datetime
+from enum import Enum
 
-from sqlalchemy import func
+from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, registry
 
 # Cria uma instância do registry que é utilizada para mapear
@@ -44,3 +45,53 @@ class User:
     updated_at: Mapped[datetime] = mapped_column(
         init=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class TodoState(str, Enum):
+    """
+    Enumeração para representar os diferentes estados de uma tarefa.
+
+    Attributes:
+        draft (str): Representa um rascunho de tarefa.
+        todo (str): Representa uma tarefa a ser feita.
+        doing (str): Representa uma tarefa em andamento.
+        done (str): Representa uma tarefa concluída.
+        trash (str): Representa uma tarefa descartada.
+    """
+
+    draft = 'draft'
+    todo = 'todo'
+    doing = 'doing'
+    done = 'done'
+    trash = 'trash'
+
+
+@table_registry.mapped_as_dataclass
+class Todo:
+    """
+    Modelo para representar uma tarefa.
+
+    Attributes:
+        id (int): Identificador único da tarefa.
+        title (str): Título da tarefa.
+        description (str): Descrição detalhada da tarefa.
+        state (TodoState): Estado atual da tarefa.
+        user_id (int): Identificador do usuário ao qual a tarefa pertence.
+    """
+
+    __tablename__ = 'todos'
+
+    id: Mapped[int] = mapped_column(init=False, primary_key=True)
+    title: Mapped[str]
+    description: Mapped[str]
+    state: Mapped[TodoState]
+
+    # Exercicios Aula 9
+    created_at: Mapped[datetime] = mapped_column(
+        init=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        init=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))

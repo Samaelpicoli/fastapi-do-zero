@@ -1,4 +1,5 @@
 import factory
+import factory.fuzzy
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -7,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from fastapi_do_zero.app import app
 from fastapi_do_zero.database import get_session
-from fastapi_do_zero.models import User, table_registry
+from fastapi_do_zero.models import Todo, TodoState, User, table_registry
 from fastapi_do_zero.security import get_password_hash
 
 
@@ -38,6 +39,40 @@ class UserFactory(factory.Factory):
     username = factory.sequence(lambda n: f'test{n}')
     email = factory.LazyAttribute(lambda obj: f'{obj.username}@test.com')
     password = factory.LazyAttribute(lambda obj: f'{obj.username}+senha')
+
+
+class TodoFactory(factory.Factory):
+    """
+    Fábrica de objetos Todo para testes.
+
+    Esta classe utiliza a biblioteca `factory_boy` para criar
+    instâncias do modelo `Todo` com dados aleatórios. Pode ser
+    usada em testes para gerar rapidamente dados de tarefas.
+
+    Attributes:
+        title (str): Um texto gerado aleatoriamente para o título da tarefa.
+        description (str): Um texto gerado aleatoriamente para a descrição
+        da tarefa.
+        state (TodoState): Um estado aleatório da tarefa, escolhido entre os
+        valores possíveis.
+        user_id (int): O ID do usuário associado à tarefa, definido
+        como 1 por padrão.
+    """
+
+    class Meta:
+        """
+        Meta configurações para a fábrica.
+
+        A configuração `model` define que a fábrica criará instâncias
+        do modelo `Todo`.
+        """
+
+        model = Todo
+
+    title = factory.Faker('text')
+    description = factory.Faker('text')
+    state = factory.fuzzy.FuzzyChoice(TodoState)
+    user_id = 1
 
 
 @pytest.fixture()

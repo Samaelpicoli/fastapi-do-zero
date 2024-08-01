@@ -1,4 +1,8 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, EmailStr
+
+from fastapi_do_zero.models import TodoState
 
 
 class Message(BaseModel):
@@ -56,6 +60,8 @@ class UserPublic(BaseModel):
     username: str
     email: EmailStr
     model_config = ConfigDict(from_attributes=True)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class UserList(BaseModel):
@@ -87,3 +93,58 @@ class Token(BaseModel):
 
     access_token: str
     token_type: str
+
+
+class TodoSchema(BaseModel):
+    """
+    Esquema de validação para criação e atualização de tarefas.
+
+    Attributes:
+        title (str): O título da tarefa.
+        description (str): A descrição detalhada da tarefa.
+        state (TodoState): O estado atual da tarefa.
+    """
+
+    title: str
+    description: str
+    state: TodoState
+
+
+class TodoPublic(TodoSchema):
+    """
+    Esquema para representar uma tarefa pública.
+
+    Attributes:
+        id (int): O identificador único da tarefa.
+    """
+
+    id: int
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
+class TodoList(BaseModel):
+    """
+    Esquema para representar uma lista de tarefas públicas.
+
+    Attributes:
+        todos (list[TodoPublic]): Uma lista de tarefas públicas.
+    """
+
+    todos: list[TodoPublic]
+
+
+class TodoUpdate(BaseModel):
+    """
+    Esquema para atualizar parcialmente uma tarefa.
+
+    Todos os campos são opcionais. Apenas os campos fornecidos serão
+    atualizados.
+
+    Args:
+        title (str | None): Novo título da tarefa.
+        description (str | None): Nova descrição da tarefa.
+        state (TodoState | None): Novo estado da tarefa.
+    """
+
+    title: str | None = None
